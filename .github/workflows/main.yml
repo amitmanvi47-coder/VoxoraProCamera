@@ -1,0 +1,48 @@
+
+name: Build Voxora Pro Camera APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "VoxoraProCamera_Android_Project.zip"
+      - ".github/workflows/main.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Extract Android project
+        run: |
+          unzip -q VoxoraProCamera_Android_Project.zip -d extracted
+          PROJECT="$(find extracted -name settings.gradle.kts -printf '%h\n' | head -n 1)"
+          test -n "$PROJECT"
+          echo "PROJECT_DIR=$PROJECT" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          chmod +x gradlew 2>/dev/null || true
+          gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxoraProCamera-debug-APK
+          path: "**/app/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
